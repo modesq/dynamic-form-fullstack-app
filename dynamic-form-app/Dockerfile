@@ -1,10 +1,11 @@
-FROM node:18-alpine
+FROM node:18
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production && npm cache clean --force
+RUN rm -rf node_modules package-lock.json
+RUN npm install
 
 COPY . .
 
