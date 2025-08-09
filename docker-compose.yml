@@ -13,6 +13,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dynamic_form_builder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./dynamic-form-builder
@@ -27,7 +32,32 @@ services:
       DB_PASSWORD: password123
       DB_NAME: dynamic_form_builder
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  seeder:
+    build: 
+      context: ./dynamic-form-builder
+      dockerfile: Dockerfile.seed
+    container_name: nest_seeder
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password123
+      DB_NAME: dynamic_form_builder
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - seed
 
   frontend:
     build: ./dynamic-form-app

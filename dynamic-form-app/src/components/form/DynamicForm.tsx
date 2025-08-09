@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -23,8 +23,20 @@ interface DynamicFormProps {
   initialConfig: FormConfigResponse;
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string | string[];
+      error?: string;
+      detail?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
+
 export default function DynamicForm({ initialConfig }: DynamicFormProps) {
-  // Local storage key for this specific form
+
   const STORAGE_KEY = `dynamic_form_${initialConfig.data[0]?.id || 'default'}`;
 
   const initializeFormData = (): FormSubmission => {
@@ -46,8 +58,7 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     return initialData;
   };
 
-  // Load form data from localStorage on component mount
-  const loadFromStorage = (): FormSubmission => {
+  const loadFromStorage = useCallback((): FormSubmission => {
     if (typeof window === 'undefined') {
       return initializeFormData();
     }
@@ -56,7 +67,7 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
       const savedData = localStorage.getItem(STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Validate that saved data matches current form structure
+
         const validData: FormSubmission = {};
         initialConfig.data.forEach(field => {
           if (parsedData[field.name] !== undefined) {
@@ -69,31 +80,27 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
       console.error('Error loading form data from localStorage:', error);
     }
     return initializeFormData();
-  };
+  }, [STORAGE_KEY, initialConfig.data]);
 
   const [formData, setFormData] = useState<FormSubmission>(initializeFormData());
   const [isClient, setIsClient] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Load from localStorage after client-side hydration
   useEffect(() => {
     setIsClient(true);
     const savedData = loadFromStorage();
     if (Object.keys(savedData).length > 0) {
       setFormData(savedData);
     }
-  }, []);
+  }, [loadFromStorage]);
 
-  // Save to localStorage whenever form data changes
   useEffect(() => {
-    if (!isClient) return; // Only run on client side
+    if (!isClient) return;
     
     const timeoutId = setTimeout(() => {
       try {
-        // Only save non-empty values
         const dataToSave: FormSubmission = {};
         Object.keys(formData).forEach(key => {
           const value = formData[key];
@@ -104,10 +111,8 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
 
         if (Object.keys(dataToSave).length > 0) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-          setHasUnsavedChanges(true);
         } else {
           localStorage.removeItem(STORAGE_KEY);
-          setHasUnsavedChanges(false);
         }
       } catch (error) {
         console.error('Error saving form data to localStorage:', error);
@@ -144,9 +149,7 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
       setMessage({ type: 'info', text: 'Form data saved locally!' });
-      setHasUnsavedChanges(false);
       
-      // Clear the message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Error saving to localStorage:', error);
@@ -163,7 +166,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
         const parsedData = JSON.parse(savedData);
         const restoredData: FormSubmission = { ...initializeFormData() };
         
-        // Only restore fields that exist in current form configuration
         initialConfig.data.forEach(field => {
           if (parsedData[field.name] !== undefined) {
             restoredData[field.name] = parsedData[field.name];
@@ -174,7 +176,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
         setErrors({});
         setMessage({ type: 'info', text: 'Form data restored from local storage!' });
         
-        // Clear the message after 3 seconds
         setTimeout(() => setMessage(null), 3000);
       } else {
         setMessage({ type: 'info', text: 'No saved data found in local storage' });
@@ -192,10 +193,8 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
       localStorage.removeItem(STORAGE_KEY);
       setFormData(initializeFormData());
       setErrors({});
-      setHasUnsavedChanges(false);
       setMessage({ type: 'info', text: 'Form cleared and local storage removed!' });
       
-      // Clear the message after 3 seconds
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Error clearing localStorage:', error);
@@ -218,7 +217,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     }
 
     try {
-      // Only send fields that have actual values (not empty strings)
       const filteredData: FormSubmission = {};
       Object.keys(formData).forEach(key => {
         const value = formData[key];
@@ -230,38 +228,41 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
       const result = await ApiService.submitFormData(filteredData);
       
       // Extract success message from API response or use default
-      const successMessage = result?.message || 
-                            result?.data?.message || 
-                            'Form submitted successfully!';
+      let successMessage = 'Form submitted successfully!';
+      if (result && typeof result === 'object') {
+        const apiResult = result as { message?: string; data?: { message?: string } };
+        successMessage = apiResult.message || 
+                        apiResult.data?.message || 
+                        'Form submitted successfully!';
+      }
                             
       setMessage({ type: 'success', text: successMessage });
       
-      // Clear form and localStorage after successful submission
       setFormData(initializeFormData());
       setErrors({});
-      setHasUnsavedChanges(false);
       if (isClient) {
         localStorage.removeItem(STORAGE_KEY);
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Form submission error:', error);
-      console.log('Error response:', error.response);
+      const apiError = error as ApiError;
+      console.log('Error response:', apiError.response);
       
       // Extract specific error message from API response
       let errorMessage = 'Failed to submit form. Please try again.';
       
-      if (error?.response?.data) {
-        const apiError = error.response.data;
-        console.log('API Error object:', apiError);
+      if (apiError?.response?.data) {
+        const apiErrorData = apiError.response.data;
+        console.log('API Error object:', apiErrorData);
         
-        errorMessage = apiError.message || 
-                      apiError.error || 
-                      apiError.detail ||
-                      (Array.isArray(apiError.message) ? apiError.message[0] : null) ||
+        errorMessage = apiErrorData.message as string || 
+                      apiErrorData.error || 
+                      apiErrorData.detail ||
+                      (Array.isArray(apiErrorData.message) ? apiErrorData.message[0] : null) ||
                       errorMessage;
-      } else if (error?.message && error.message !== 'Failed to submit form data') {
-        errorMessage = error.message;
+      } else if (apiError?.message && apiError.message !== 'Failed to submit form data') {
+        errorMessage = apiError.message;
       }
       
       console.log('Final error message:', errorMessage);
