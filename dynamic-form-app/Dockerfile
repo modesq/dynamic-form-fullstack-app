@@ -1,14 +1,13 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+
+RUN npm ci --only=production && npm cache clean --force
 
 COPY . .
 
-RUN npm run build
+RUN npm run build -- --no-lint
 
-EXPOSE 3000
-
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "sleep 10 && npm run seed"]
