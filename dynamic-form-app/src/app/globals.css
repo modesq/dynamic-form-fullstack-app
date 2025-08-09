@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #fafafa;
+  margin: 0;
+  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+.MuiPaper-root {
+  background-color: #ffffff !important;
+}
+
+.MuiButton-root {
+  text-transform: none !important;
+}
+
+.MuiFormControl-root,
+.MuiTextField-root {
+  margin: unset !important;
+}
