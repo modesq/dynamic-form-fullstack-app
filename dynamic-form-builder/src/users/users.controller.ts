@@ -36,11 +36,11 @@ export class UsersController {
       return await this.usersService.findUserByID(id);
     } catch (error) {
       throw new HttpException(
-        error.message || 'User not found', 
+        error?.message || 'User not found', 
         HttpStatus.NOT_FOUND
       );
     }
-  }
+}
 
   @Post()
   async createUser(@Body() userData: CreateUserDto): Promise<User> {
