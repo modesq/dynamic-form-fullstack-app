@@ -162,8 +162,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     } finally {
       setLoading(false);
     }
-    localStorage.setItem("submittedFormData", JSON.stringify(formData));
-    router.push("/summary");
   };
 
   return (
