@@ -10,15 +10,16 @@ import {
   Alert,
   CircularProgress,
   IconButton,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
 import { Send, Save, Restore, Clear } from '@mui/icons-material';
-import { FormConfigResponse, FormSubmission } from '../../types/form.types';
-import { ApiService } from '../../services/api.service';
-import { validateAllFields } from '../../utils/formValidation';
+import { FormConfigResponse, FormSubmission } from '@/types/form.types';
+import { ApiService } from '@/services/api.service';
+import { LocalStorageService } from '@/services/localStorage.service';
+import { useMessageService } from '@/hooks/useMessageService';
+import { validateAllFields } from '@/utils/formValidation';
 import { FieldRenderer } from './FieldRenderer';
-import { spacing } from '../../utils/spacing';
-import { LocalStorageService } from '../../services/localStorage.service';
+import { spacing } from '@/utils/spacing';
 
 interface DynamicFormProps {
   initialConfig: FormConfigResponse;
@@ -26,14 +27,15 @@ interface DynamicFormProps {
 
 export default function DynamicForm({ initialConfig }: DynamicFormProps) {
   const STORAGE_KEY = `dynamic_form_${initialConfig.data[0]?.id || 'default'}`;
+  const { message, showSuccess, showError, showInfo, clearMessage } = useMessageService();
 
-const initializeFormData = (): FormSubmission => {
-  const initialData: FormSubmission = {};
-  initialConfig.data.forEach(field => {
-    initialData[field.name] = field.defaultValue || '';
-  });
-  return initialData;
-};
+  const initializeFormData = (): FormSubmission => {
+    const initialData: FormSubmission = {};
+    initialConfig.data.forEach(field => {
+      initialData[field.name] = field.defaultValue || '';
+    });
+    return initialData;
+  };
 
   const loadFromStorage = useCallback((): FormSubmission => {
     const savedData = LocalStorageService.getFormData(STORAGE_KEY);
@@ -53,7 +55,6 @@ const initializeFormData = (): FormSubmission => {
   const [isClient, setIsClient] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -87,8 +88,7 @@ const initializeFormData = (): FormSubmission => {
   const handleSaveToStorage = () => {
     if (!isClient) return;
     LocalStorageService.saveFormData(STORAGE_KEY, formData);
-    setMessage({ type: 'info', text: 'Form data saved locally!' });
-    setTimeout(() => setMessage(null), 3000);
+    showInfo('Form data saved locally!');
   };
 
   const handleRestoreFromStorage = () => {
@@ -96,8 +96,7 @@ const initializeFormData = (): FormSubmission => {
     const savedData = loadFromStorage();
     setFormData(savedData);
     setErrors({});
-    setMessage({ type: 'info', text: 'Form data restored from local storage!' });
-    setTimeout(() => setMessage(null), 3000);
+    showInfo('Form data restored from local storage!');
   };
 
   const handleClearStorage = () => {
@@ -105,35 +104,41 @@ const initializeFormData = (): FormSubmission => {
     LocalStorageService.clearFormData(STORAGE_KEY);
     setFormData(initializeFormData());
     setErrors({});
-    setMessage({ type: 'info', text: 'Form cleared and local storage removed!' });
-    setTimeout(() => setMessage(null), 3000);
+    showInfo('Form cleared and local storage removed!');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
+  e.preventDefault();
+  setLoading(true);
+  clearMessage();
 
-    const validationErrors = validateAllFields(formData, initialConfig.data);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setLoading(false);
-      setMessage({ type: 'error', text: 'Please fix the errors below' });
-      return;
-    }
+  const validationErrors = validateAllFields(formData, initialConfig.data);
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+    setLoading(false);
+    showError('Please fix the errors below');
+    return;
+  }
 
-    try {
-      const result = await ApiService.submitFormData(formData);
-      setMessage({ type: 'success', text: 'Form submitted successfully!' });
-      LocalStorageService.clearFormData(STORAGE_KEY);
-      setFormData(initializeFormData());
-      setErrors({});
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to submit form';
-      setMessage({ type: 'error', text: errorMessage });
-    } finally {
-      setLoading(false);
-    }
+  try {
+    await ApiService.submitFormData(formData);
+    showSuccess('Form submitted successfully!');
+    LocalStorageService.clearFormData(STORAGE_KEY);
+    
+    // Reset form with default values
+    const defaultData: FormSubmission = {};
+    initialConfig.data.forEach(field => {
+      defaultData[field.name] = field.defaultValue || '';
+    });
+    setFormData(defaultData);
+    setErrors({});
+  } catch (error: any) {
+    const errorMessage = error?.response?.data?.message || error?.message || 'Failed to submit form';
+    showError(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+  
   };
 
   return (
@@ -176,7 +181,7 @@ const initializeFormData = (): FormSubmission => {
             <FieldRenderer
               key={field.id}
               field={field}
-              value={(formData[field.name] as string) || ''}
+              value={String(formData[field.name] ?? '')}
               error={errors[field.name]}
               onChange={(value) => handleFieldChange(field.name, value)}
             />
