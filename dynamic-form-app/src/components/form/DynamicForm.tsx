@@ -18,68 +18,35 @@ import { ApiService } from '../../services/api.service';
 import { validateAllFields } from '../../utils/formValidation';
 import { FieldRenderer } from './FieldRenderer';
 import { spacing } from '../../utils/spacing';
+import { LocalStorageService } from '../../services/localStorage.service';
 
 interface DynamicFormProps {
   initialConfig: FormConfigResponse;
 }
 
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string | string[];
-      error?: string;
-      detail?: string;
-    };
-    status?: number;
-  };
-  message?: string;
-}
-
 export default function DynamicForm({ initialConfig }: DynamicFormProps) {
-
   const STORAGE_KEY = `dynamic_form_${initialConfig.data[0]?.id || 'default'}`;
 
-  const initializeFormData = (): FormSubmission => {
-    const initialData: FormSubmission = {};
-    
+const initializeFormData = (): FormSubmission => {
+  const initialData: FormSubmission = {};
+  initialConfig.data.forEach(field => {
+    initialData[field.name] = field.defaultValue || '';
+  });
+  return initialData;
+};
+
+  const loadFromStorage = useCallback((): FormSubmission => {
+    const savedData = LocalStorageService.getFormData(STORAGE_KEY);
+    if (!savedData) return initializeFormData();
+
+    const validData: FormSubmission = {};
     initialConfig.data.forEach(field => {
-      if (field.defaultValue) {
-        if (field.fieldType === 'TEXT') {
-          initialData[field.name] = field.defaultValue;
-        } else if ((field.fieldType === 'LIST' || field.fieldType === 'RADIO') && field.listOfValues1) {
-          const index = parseInt(field.defaultValue);
-          if (!isNaN(index) && index >= 0 && index < field.listOfValues1.length) {
-            initialData[field.name] = field.listOfValues1[index];
-          }
-        }
+      if (savedData[field.name] !== undefined) {
+        validData[field.name] = savedData[field.name];
       }
     });
     
-    return initialData;
-  };
-
-  const loadFromStorage = useCallback((): FormSubmission => {
-    if (typeof window === 'undefined') {
-      return initializeFormData();
-    }
-    
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-
-        const validData: FormSubmission = {};
-        initialConfig.data.forEach(field => {
-          if (parsedData[field.name] !== undefined) {
-            validData[field.name] = parsedData[field.name];
-          }
-        });
-        return { ...initializeFormData(), ...validData };
-      }
-    } catch (error) {
-      console.error('Error loading form data from localStorage:', error);
-    }
-    return initializeFormData();
+    return { ...initializeFormData(), ...validData };
   }, [STORAGE_KEY, initialConfig.data]);
 
   const [formData, setFormData] = useState<FormSubmission>(initializeFormData());
@@ -100,32 +67,14 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     if (!isClient) return;
     
     const timeoutId = setTimeout(() => {
-      try {
-        const dataToSave: FormSubmission = {};
-        Object.keys(formData).forEach(key => {
-          const value = formData[key];
-          if (value !== '' && value !== undefined && value !== null) {
-            dataToSave[key] = value;
-          }
-        });
-
-        if (Object.keys(dataToSave).length > 0) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-        } else {
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      } catch (error) {
-        console.error('Error saving form data to localStorage:', error);
-      }
-    }, 500); // Debounce saving by 500ms
+      LocalStorageService.saveFormData(STORAGE_KEY, formData);
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [formData, STORAGE_KEY, isClient]);
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
-    
-    // Clear error for this field when user starts typing
     if (errors[fieldName]) {
       setErrors(prev => {
         const newErrors = { ...prev };
@@ -137,69 +86,27 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
 
   const handleSaveToStorage = () => {
     if (!isClient) return;
-    
-    try {
-      const dataToSave: FormSubmission = {};
-      Object.keys(formData).forEach(key => {
-        const value = formData[key];
-        if (value !== '' && value !== undefined && value !== null) {
-          dataToSave[key] = value;
-        }
-      });
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-      setMessage({ type: 'info', text: 'Form data saved locally!' });
-      
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-      setMessage({ type: 'error', text: 'Failed to save form data locally' });
-    }
+    LocalStorageService.saveFormData(STORAGE_KEY, formData);
+    setMessage({ type: 'info', text: 'Form data saved locally!' });
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleRestoreFromStorage = () => {
     if (!isClient) return;
-    
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        const restoredData: FormSubmission = { ...initializeFormData() };
-        
-        initialConfig.data.forEach(field => {
-          if (parsedData[field.name] !== undefined) {
-            restoredData[field.name] = parsedData[field.name];
-          }
-        });
-        
-        setFormData(restoredData);
-        setErrors({});
-        setMessage({ type: 'info', text: 'Form data restored from local storage!' });
-        
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        setMessage({ type: 'info', text: 'No saved data found in local storage' });
-      }
-    } catch (error) {
-      console.error('Error restoring from localStorage:', error);
-      setMessage({ type: 'error', text: 'Failed to restore form data' });
-    }
+    const savedData = loadFromStorage();
+    setFormData(savedData);
+    setErrors({});
+    setMessage({ type: 'info', text: 'Form data restored from local storage!' });
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleClearStorage = () => {
     if (!isClient) return;
-    
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      setFormData(initializeFormData());
-      setErrors({});
-      setMessage({ type: 'info', text: 'Form cleared and local storage removed!' });
-      
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error) {
-      console.error('Error clearing localStorage:', error);
-      setMessage({ type: 'error', text: 'Failed to clear local storage' });
-    }
+    LocalStorageService.clearFormData(STORAGE_KEY);
+    setFormData(initializeFormData());
+    setErrors({});
+    setMessage({ type: 'info', text: 'Form cleared and local storage removed!' });
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,7 +115,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     setMessage(null);
 
     const validationErrors = validateAllFields(formData, initialConfig.data);
-
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       setLoading(false);
@@ -217,55 +123,13 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     }
 
     try {
-      const filteredData: FormSubmission = {};
-      Object.keys(formData).forEach(key => {
-        const value = formData[key];
-        if (value !== '' && value !== undefined && value !== null) {
-          filteredData[key] = value;
-        }
-      });
-
-      const result = await ApiService.submitFormData(filteredData);
-      
-      // Extract success message from API response or use default
-      let successMessage = 'Form submitted successfully!';
-      if (result && typeof result === 'object') {
-        const apiResult = result as { message?: string; data?: { message?: string } };
-        successMessage = apiResult.message || 
-                        apiResult.data?.message || 
-                        'Form submitted successfully!';
-      }
-                            
-      setMessage({ type: 'success', text: successMessage });
-      
+      const result = await ApiService.submitFormData(formData);
+      setMessage({ type: 'success', text: 'Form submitted successfully!' });
+      LocalStorageService.clearFormData(STORAGE_KEY);
       setFormData(initializeFormData());
       setErrors({});
-      if (isClient) {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-      
-    } catch (error: unknown) {
-      console.error('Form submission error:', error);
-      const apiError = error as ApiError;
-      console.log('Error response:', apiError.response);
-      
-      // Extract specific error message from API response
-      let errorMessage = 'Failed to submit form. Please try again.';
-      
-      if (apiError?.response?.data) {
-        const apiErrorData = apiError.response.data;
-        console.log('API Error object:', apiErrorData);
-        
-        errorMessage = apiErrorData.message as string || 
-                      apiErrorData.error || 
-                      apiErrorData.detail ||
-                      (Array.isArray(apiErrorData.message) ? apiErrorData.message[0] : null) ||
-                      errorMessage;
-      } else if (apiError?.message && apiError.message !== 'Failed to submit form data') {
-        errorMessage = apiError.message;
-      }
-      
-      console.log('Final error message:', errorMessage);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to submit form';
       setMessage({ type: 'error', text: errorMessage });
     } finally {
       setLoading(false);
@@ -300,10 +164,6 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
             </Tooltip>
           </Box>
         </Box>
-        
-        <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: spacing.form.sectionGap }}>
-          Please fill out all required fields
-        </Typography>
 
         {message && (
           <Alert severity={message.type} sx={{ mb: spacing.form.sectionGap }}>
