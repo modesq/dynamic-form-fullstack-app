@@ -15,6 +15,13 @@ export const validateField = (fieldName: string, value: string, field: FormField
     return `${field.name} is required`;
   }
 
+  // For LIST and RADIO fields, ensure a valid option is selected
+  if ((field.fieldType === 'LIST' || field.fieldType === 'RADIO') && field.required && field.listOfValues1) {
+    if (!field.listOfValues1.includes(value)) {
+      return `Please select a valid option for ${field.name}`;
+    }
+  }
+
   // Validate email format
   if (value && isEmailField(fieldName) && !isValidEmail(value)) {
     return 'Please enter a valid email address';
@@ -34,11 +41,11 @@ export const validateField = (fieldName: string, value: string, field: FormField
 };
 
 export const validateAllFields = (
-  formData: Record<string, string | boolean>, 
+  formData: Record<string, string | boolean>,
   fields: FormFieldConfig[]
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
-  
+
   fields.forEach(field => {
     const value = formData[field.name] || '';
     const error = validateField(field.name, value as string, field);

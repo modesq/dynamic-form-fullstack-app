@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -26,15 +27,29 @@ interface DynamicFormProps {
 }
 
 export default function DynamicForm({ initialConfig }: DynamicFormProps) {
+  const router = useRouter();
   const STORAGE_KEY = `dynamic_form_${initialConfig.data[0]?.id || "default"}`;
   const { message, showSuccess, showError, showInfo, clearMessage } =
     useMessageService();
 
   const initializeFormData = (): FormSubmission => {
     const initialData: FormSubmission = {};
+
     initialConfig.data.forEach((field) => {
-      initialData[field.name] = field.defaultValue || "";
+      if (field.fieldType === "TEXT" && field.defaultValue) {
+        initialData[field.name] = field.defaultValue;
+      } else if (
+        (field.fieldType === "LIST" || field.fieldType === "RADIO") &&
+        field.listOfValues1 &&
+        field.defaultValue
+      ) {
+        const index = parseInt(field.defaultValue) - 1;
+        if (index >= 0 && index < field.listOfValues1.length) {
+          initialData[field.name] = field.listOfValues1[index];
+        }
+      }
     });
+
     return initialData;
   };
 
@@ -135,6 +150,9 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
       });
       setFormData(defaultData);
       setErrors({});
+
+      localStorage.setItem("submittedFormData", JSON.stringify(formData));
+      router.push("/summary");
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -144,6 +162,8 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
     } finally {
       setLoading(false);
     }
+    localStorage.setItem("submittedFormData", JSON.stringify(formData));
+    router.push("/summary");
   };
 
   return (
@@ -198,13 +218,11 @@ export default function DynamicForm({ initialConfig }: DynamicFormProps) {
           </Box>
         </Box>
 
-        <Box sx={{ minHeight: 56, mb: spacing.form.sectionGap }}>
-          {message ? (
-            <Alert severity={message.type}>{message.text}</Alert>
-          ) : (
-            <Box />
-          )}
-        </Box>
+        {message && (
+          <Alert severity={message.type} sx={{ mb: spacing.form.sectionGap }}>
+            {message.text}
+          </Alert>
+        )}
 
         <Box component="form" onSubmit={handleSubmit} noValidate>
           {initialConfig.data.map((field) => (

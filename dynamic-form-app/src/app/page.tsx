@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Container, Alert, CircularProgress, Box } from '@mui/material';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import DynamicForm from '../components/form/DynamicForm';
-import { ApiService } from '../services/api.service';
-import { FormConfigResponse } from '../types/form.types';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import DynamicForm from '@/components/form/DynamicForm';
+import { ApiService } from '@/services/api.service';
+import { FormConfigResponse } from '@/types/form.types';
 
 export default function HomePage() {
   const [formConfig, setFormConfig] = useState<FormConfigResponse | null>(null);

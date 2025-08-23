@@ -21,7 +21,7 @@ export const SelectFieldRenderer: React.FC<SelectFieldRendererProps> = ({
       <FormControl fullWidth required={field.required} error={!!error}>
         <InputLabel>{field.name}</InputLabel>
         <Select
-          value={value}
+          value={value || ''}
           onChange={(e) => onChange(e.target.value as string)}
           label={field.name}
         >
@@ -33,11 +33,11 @@ export const SelectFieldRenderer: React.FC<SelectFieldRendererProps> = ({
         </Select>
       </FormControl>
       {error && (
-        <Typography 
-          variant="caption" 
-          color="error" 
-          sx={{ 
-            ml: 2, 
+        <Typography
+          variant="caption"
+          color="error"
+          sx={{
+            ml: 2,
             mt: spacing.form.errorMarginTop,
             display: 'block'
           }}

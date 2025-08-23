@@ -7,7 +7,7 @@ export interface Message {
   text: string;
 }
 
-export const useMessageService = (defaultTimeout = 3000) => {
+export const useMessageService = (defaultTimeout = 5000) => {
   const [message, setMessage] = useState<Message | null>(null);
 
   const showMessage = useCallback((type: MessageType, text: string, timeout?: number) => {
