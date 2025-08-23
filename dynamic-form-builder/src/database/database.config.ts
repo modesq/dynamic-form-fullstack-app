@@ -1,5 +1,7 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { FormField } from '../entities/form-field.entity';
+import { User } from '../entities/User.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -8,7 +10,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   username: configService.get('DB_USER', 'postgres'),
   password: configService.get('DB_PASSWORD', 'password123'),
   database: configService.get('DB_NAME', 'dynamic_form_builder'),
-  entities: ['dist/**/*.entity.js'],
+  entities: [FormField, User],
   synchronize: configService.get('NODE_ENV', 'development') === 'development',
   logging: configService.get('NODE_ENV', 'development') === 'development',
+  autoLoadEntities: false,
 });
