@@ -1,18 +1,39 @@
 import React from 'react';
+import { Box, Container, Typography } from '@mui/material';
 
 export default function Header() {
   return (
-    <header className="bg-gray-900 text-white shadow-lg">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between py-4">
-          <div className="flex items-center space-x-3">
-            <img src="/logo.svg" alt="Logo" />
-          </div>
-          <div className="hidden md:block text-sm text-gray-400">
+    <Box
+      component="header"
+      sx={{
+        bgcolor: '#18181b',
+        color: 'white',
+        boxShadow: 3,
+        py: 2
+      }}
+    >
+      <Container maxWidth="lg">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <img src="/logo.svg" alt="Logo" style={{ height: '32px' }} />
+          </Box>
+          <Typography
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              color: '#71717a',
+              fontSize: '0.875rem'
+            }}
+          >
             Dynamic Forms
-          </div>
-        </div>
-      </div>
-    </header>
+          </Typography>
+        </Box>
+      </Container>
+    </Box>
   );
 }

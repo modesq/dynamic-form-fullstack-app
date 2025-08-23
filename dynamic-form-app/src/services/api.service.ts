@@ -1,6 +1,6 @@
 import { FormConfigResponse, FormSubmission } from '../types/form.types';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 interface ApiErrorData {
   message?: string | string[];
