@@ -20,7 +20,7 @@ export default function HomePage() {
         setFormConfig(config);
       } catch (err) {
         console.error('Failed to fetch form config:', err);
-        setError('Unable to load form configuration. Please ensure the backend server is running on localhost:3000.');
+        setError('Unable to load form configuration. Please ensure the backend server is running on localhost:3001.');
       } finally {
         setLoading(false);
       }

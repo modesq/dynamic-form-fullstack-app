@@ -1,13 +1,14 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 
-export const databaseConfig: TypeOrmModuleOptions = {
+export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
-  host: process.env.DB_HOST ?? 'localhost',
-  port: Number(process.env.DB_PORT ?? 5433),
-  username: process.env.DB_USER ?? 'postgres',
-  password: process.env.DB_PASSWORD ?? 'password123',
-  database: process.env.DB_NAME ?? 'dynamic_form_builder',
+  host: configService.get('DB_HOST', 'localhost'),
+  port: configService.get('DB_PORT', 5433),
+  username: configService.get('DB_USER', 'postgres'),
+  password: configService.get('DB_PASSWORD', 'password123'),
+  database: configService.get('DB_NAME', 'dynamic_form_builder'),
   entities: ['dist/**/*.entity.js'],
-  synchronize: true,
-  logging: true,
-};
+  synchronize: configService.get('NODE_ENV', 'development') === 'development',
+  logging: configService.get('NODE_ENV', 'development') === 'development',
+});
