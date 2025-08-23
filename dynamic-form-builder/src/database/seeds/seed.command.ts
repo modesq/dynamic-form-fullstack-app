@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../app.module'; // adjust path to your main app module
+import { AppModule } from '../../app.module';
 import { SeedingService } from './seeding.service';
 
 async function bootstrap() {

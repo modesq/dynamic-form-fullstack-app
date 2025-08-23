@@ -33,7 +33,10 @@ export const validateField = (fieldName: string, value: string, field: FormField
   return '';
 };
 
-export const validateAllFields = (formData: Record<string, any>, fields: FormFieldConfig[]): Record<string, string> => {
+export const validateAllFields = (
+  formData: Record<string, string | boolean>, 
+  fields: FormFieldConfig[]
+): Record<string, string> => {
   const errors: Record<string, string> = {};
   
   fields.forEach(field => {
@@ -46,17 +49,3 @@ export const validateAllFields = (formData: Record<string, any>, fields: FormFie
 
   return errors;
 };
-
-// export const validateAllFields = (formData: Record<string, string>, fields: FormFieldConfig[]): Record<string, string> => {
-//   const errors: Record<string, string> = {};
-  
-//   fields.forEach(field => {
-//     const value = formData[field.name] ?? '';
-//     const error = validateField(field.name, value, field);
-//     if (error) {
-//       errors[field.name] = error;
-//     }
-//   });
-
-//   return errors;
-// };
