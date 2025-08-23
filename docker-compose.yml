@@ -31,15 +31,27 @@ services:
       DB_USER: postgres
       DB_PASSWORD: password123
       DB_NAME: dynamic_form_builder
+      PORT: 3001
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  frontend:
+    build: ./dynamic-form-app
+    container_name: next_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api
+    depends_on:
+      - backend
 
   seeder:
     build: 
@@ -58,17 +70,6 @@ services:
     restart: "no"
     profiles:
       - seed
-
-  frontend:
-    build: ./dynamic-form-app
-    container_name: next_frontend
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-    depends_on:
-      - backend
 
 volumes:
   postgres_data:
